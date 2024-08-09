@@ -1,0 +1,17 @@
+body {
+  background-color: #ffffff;
+  color: #000000;
+}
+
+button {
+  background-color: #ffffff;
+  color: #000000; /
+  border: none;
+  padding: 10px 20px;
+  cursor: pointer;
+}
+
+button:hover {
+  background-color: #add8e6;
+  color: #ffffff;
+}

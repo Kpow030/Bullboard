@@ -1,0 +1,84 @@
+{% extends 'default.html' %}
+{% load static %}
+
+{% block title %}
+{{ article.title }}
+{% endblock title %}
+
+{% load censor_filter %}
+{% load custom_tags %}
+
+{% block content %}
+    <h3>Общее количество новостей: {{ articles|length }}</h3>
+    <h3>{% current_time '%d %b %Y' %}</h3>
+    <hr>
+    <br><a href="{% url 'article_create' %}"><button><small>Добавить новое объявление</small></button></a>
+<br>
+    {% if perms.testapp.add_article %}
+        <a href="{% url 'article_create' %}"><p><button><small>Добавить объявление</small></button></p></a>
+    {% endif %}
+<br>
+    {% if articles %}
+        <table>
+            <tr>
+                <td><b>Файл</b></td>
+                <td><b>Заголовок</b></td>
+                <td><b>Превью статьи</b></td>
+                <td><b>Дата создания</b></td>
+                <td><b>Тип публикации</b></td>
+                <td><b>Автор</b></td>
+
+                {% if perms.testapp.update_article or perms.testapp.delete_article %}
+                    <td><b>Действия</b></td>
+                {% endif %}
+            </tr>
+
+            {% for article in articles %}
+            <tr>
+                {% if article.upload %}
+                    <td>{{ article.upload|safe }}</td>
+                {% else %}
+                    <td> - </td>
+                {% endif %}
+
+                <td><a href="{% url 'article_detail' article.id %}">{{ article.title|censor }}</a></td>
+                <td><a href="{% url 'article_detail' article.id %}">{{ article.text|safe }}</a></td>
+                <td>{{ article.dateCreation|date:'d M Y'}}</td>
+                <td>{{ article.get_category_display }}</td>
+                <td>{{ article.author }}</td>
+
+                <td>
+                    {% if article.author == request.user %}
+                        <a href="{% url 'article_update' article.id %}"><button><small>Изменить</small></button></a>
+
+                        <a href="{% url 'article_delete' article.id %}"><button><small>Удалить</small></button></a>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+            {% else %}
+                <h5> На данный момент времени ни один пост не добавлен... </h5>
+                <h6> Самое время опубликовать объявление в ленте ;) </h6>
+
+                <br><br><small><button href="{% url 'article_create' %}">Добавить новое объявление</button></small>
+    {% endif %}
+<br>
+    {% if page_obj.has_previous %}
+        <a href="?{% url_replace page=1 %}">1</a>
+        {% if page_obj.previous_page_number != 1 %}
+            ...
+            <a href="?{% url_replace page=page_obj.previous_page_number %}">{{ page_obj.previous_page_number }}</a>
+        {% endif %}
+    {% endif %}
+
+    {{ page_obj.number }}
+
+    {% if page_obj.has_next %}
+        <a href="?{% url_replace page=page_obj.next_page_number %}">{{ page_obj.next_page_number }}</a>
+        {% if paginator.num_pages != page_obj.next_page_number %}
+            ...
+            <a href="?{% url_replace page=page_obj.paginator.num_pages %}">{{ page_obj.paginator.num_pages }}</a>
+        {% endif %}
+    {% endif %}
+{% endblock content %}
