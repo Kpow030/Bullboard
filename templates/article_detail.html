@@ -1,0 +1,75 @@
+{% extends 'default.html' %}
+{% load static %}
+
+{% block title %}
+{{ article.title }}
+{% endblock title %}
+
+{% load censor_filter %}
+{% load custom_tags %}
+
+{% block content %}
+    <h3><b>Новость №{{ article.id }}</b></h3>
+    <hr>
+    <h4>{% current_time '%d %b %Y' %}</h4>
+    <hr>
+    <h5>Объявление: "{{ article.title }}"</h5>
+
+    {% if article %}
+        <table>
+            <tr>
+                <td><b>Файл</b></td>
+                <td><b>Заголовок</b></td>
+                <td><b>Превью статьи</b></td>
+                <td><b>Дата создания</b></td>
+                <td><b>Категория</b></td>
+                <td><b>Действия</b></td>
+            </tr>
+            <tr>
+                {% if article.upload %}
+                    <td>{{ article.upload|safe }}</td>
+                {% else %}
+                    <td> - </td>
+                {% endif %}
+
+                <td>{{ article.title }}</td>
+                <td>{{ article.text|safe }}</td>
+                <td>{{ article.dateCreation|date:'d M Y'}}</td>
+                <td>{{ article.get_category_display }}</td>
+
+
+                <td>
+                    {% if article.author == request.user %}
+                        <a href="{% url 'article_update' article.id %}"><button><small>Изменить</small></button></a>
+
+                        <a href="{% url 'article_delete' article.id %}"><button><small>Удалить</small></button></a>
+                    {% endif %}
+                </td>
+
+            </tr>
+        </table>
+    {% else %}
+        <h5> На данный момент времени ни один пост не добавлен... </h5>
+        <h6> Опубликуйте свою статью ;) </h6>
+    {% endif %}
+
+    <form action="{% url 'comment_create' article_id %}" method="post">
+        {% csrf_token %}
+        <br>{{ form }}</br>
+        <button><small><input type="submit" value="Создать отклик"/></small></button>
+    </form>
+<br>
+<hr>
+    <h5>Все отклики:</h5>
+        {% for comment in article.comment_set.all %}
+            <p>{{ comment.commentUser.username }}</p>
+            <p>{{ comment.text }}</p>
+                {% if Comment.author == request.user.author %}
+                    <a href="{% url 'comment_update' comment.id %}"><button><small>Изменить</small></button></a>
+
+                    <a href="{% url 'comment_delete' comment.id %}"><button><small>Удалить</small></button></a>
+                {% endif %}
+<hr>
+        {% endfor %}
+<br><br><a href="{% url 'article_create' %}"><button><small>Добавить объявление</small></button></a><br><br>
+{% endblock content %}
