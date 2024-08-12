@@ -1,16 +1,13 @@
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.db.models import OuterRef, Exists
 from django.shortcuts import render, redirect
-from django.urls import reverse_lazy
-from django.views.decorators.csrf import csrf_protect
-from django.views.generic import ListView, CreateView, DetailView, UpdateView, DeleteView, TemplateView
+from django.urls import reverse
+from django.views.generic import ListView, CreateView, DetailView, UpdateView, DeleteView, TemplateView, View
 from django_filters import FilterSet
+from django.db.models import Q
 
-
-from.filters import CommentFilter
-from.forms import ArticleForm, CommentForm
-from.models import Article, Subscription, Comment, User
+from .forms import ArticleForm, CommentForm, Registration
+from .models import *
 
 
 class ConfirmUser(UpdateView):
@@ -43,22 +40,14 @@ class ArticleFilter(FilterSet):
 
 
 class IndexView(LoginRequiredMixin, ListView):
-    form_class = CommentFilter
     model = Comment
     template_name = 'profile.html'
     context_object_name = 'comments'
+    filterset_class = ArticleFilter
 
     def get_queryset(self):
         queryset = Comment.objects.filter(commentPost__author__id=self.request.user.id)
-        self.filterset = ArticleFilter(self.request.GET, queryset, request=self.request)
-        if self.request.GET:
-            return self.filterset.qs
-        return Comment.objects.none()
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['filterset'] = self.filterset
-        return context
+        return queryset
 
 
 class ArticleList(ListView):
@@ -68,9 +57,18 @@ class ArticleList(ListView):
     context_object_name = 'articles'
     paginate_by = 5
 
+    def article_list(request):
+        articles = Article.objects.all()
+        return render(request, 'article_list.html', {'articles': articles})
+
+    def article_search(request):
+        query = request.GET.get('q')
+        articles = Article.objects.filter(Q(title__icontains=query) | Q(text__icontains=query))
+        return render(request, 'article_list.html', {'articles': articles})
+
 
 class CommentCreate(LoginRequiredMixin, CreateView):
-    permission_required = ('testapp.add_comment',)
+    permission_required = ('Digital_Classfieds.add_comment',)
     raise_exception = True
     model = Comment
     template_name = 'article_detail.html'
@@ -90,23 +88,27 @@ class CommentCreate(LoginRequiredMixin, CreateView):
 
 
 class CommentUpdate(LoginRequiredMixin, UpdateView):
-    permission_required = ('testapp.change_comment',)
+    permission_required = ('Digital_Classfieds.change_comment',)
     raise_exception = True
     form_class = CommentForm
     model = Comment
     template_name = 'comment_update.html'
-    success_url = reverse_lazy('article_list')
+
+    def get_success_url(self):
+        return reverse('article_list')
 
 
 class CommentDelete(LoginRequiredMixin, DeleteView):
-    permission_required = ('testapp.delete_comment',)
+    permission_required = ('Digital_Classfieds.delete_comment',)
     raise_exception = True
     model = Comment
     template_name = 'comment_delete.html'
-    success_url = reverse_lazy('article_list')
+
+    def get_success_url(self):
+        return reverse('article_list')
 
 
-class ArticleDetail(DetailView, CommentCreate):
+class ArticleDetail(DetailView):
     model = Article
     template_name = 'article_detail.html'
     context_object_name = 'article'
@@ -114,32 +116,83 @@ class ArticleDetail(DetailView, CommentCreate):
 
 
 class ArticleCreate(LoginRequiredMixin, CreateView):
-    permission_required = ('testapp.add_article',)
+    permission_required = ('Digital_Classfieds.add_article',)
     raise_exception = True
     form_class = ArticleForm
     model = Article
     template_name = 'article_create.html'
-    success_url = reverse_lazy('article_create')
+
+    def get_success_url(self):
+        return reverse('home')
 
     def form_valid(self, form):
-        new_article = form.save(commit=False)
-        if self.request.method == 'POST':
-            new_article.author = self.request.user
-        new_article.save()
         return super().form_valid(form)
 
 
 class ArticleDelete(LoginRequiredMixin, DeleteView):
     model = Article
     template_name = 'article_delete.html'
-    success_url = reverse_lazy('article_list')
+
+    def get_success_url(self):
+        return reverse('article_list')
 
 
-def zone_view(request):
+class RegistrationCreate(CreateView):
+    form_class = Registration
+    template_name ='register.html'
+
+    def form_valid(self, form):
+        user = form.save(commit=False)
+        user.set_password(form.cleaned_data['password'])
+        user.save()
+        return redirect('login')
+
+
+class ResponseView(DetailView):
+    model = Article
+    template_name ='responses.html'
+    context_object_name = 'article'
+    pk_url_kwarg = 'pk'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['responses'] = self.object.get_responses()
+        return context
+
+
+class CommentView(DetailView):
+    model = Article
+    template_name = 'comments.html'
+    context_object_name = 'article'
+    pk_url_kwarg = 'pk'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['comments'] = self.object.get_comments()
+        return context
+
+
+class CommentLikeView(View):
+    def get(self, request, pk):
+        comment = Comment.objects.get(pk=pk)
+        comment.like()
+        return redirect('comments', pk=comment.post.pk)
+
+
+class CommentDislikeView(View):
+    def get(self, request, pk):
+        comment = Comment.objects.get(pk=pk)
+        comment.dislike()
+        return redirect('comments', pk=comment.post.pk)
+
+
+@login_required
+def article_create(request):
     if request.method == 'POST':
-        zone = request.POST.get('zone')
-        print(zone)
-        return redirect('next_view')
-    return render(request, 'zone.html')
-
-
+        form = ArticleForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect('article_list')
+    else:
+        form = ArticleForm()
+    return render(request, 'article_create.html', {'form': form})
