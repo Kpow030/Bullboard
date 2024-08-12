@@ -1,13 +1,19 @@
 from datetime import timedelta
 
 from celery import shared_task
-from django.core.mail import EmailMultiAlternatives
+from django.core.mail import EmailMultiAlternatives, send_mail
 from django.template.loader import render_to_string
 from django.utils import timezone
 
-from Bullboard import settings
+from Digital_Classifieds import settings
 from models import Comment, Article, User
 
+
+
+def send_confirmation_email(user):
+    subject = 'Ваш почтовый адрес указан в регистрации'
+    message = 'Если это вы то подтвердите '
+    send_mail(subject, message, settings.EMAIL_HOST, [user.email])
 
 @shared_task
 def comment_created_task(comment_id):

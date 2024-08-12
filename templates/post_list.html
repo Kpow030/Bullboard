@@ -1,0 +1,9 @@
+{% extends 'default.html' %}
+{% load static %}
+
+{% block title %}
+{{ article.title }}
+{% endblock title %}
+
+{% load censor_filter %}
+{% load custom_tags %}

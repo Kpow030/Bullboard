@@ -3,7 +3,7 @@ import random
 
 from django import forms
 from django.core.exceptions import ValidationError
-
+from django.contrib.auth.models import User
 from django.core.mail import send_mail
 from django.forms import TextInput, Textarea
 from django.conf import settings
@@ -80,3 +80,13 @@ class CommentForm(forms.ModelForm):
         widgets = {
             'text': forms.Textarea(attrs={'class': 'form-text', 'cols': 150, 'rows': 1}),
         }
+
+
+class Registration(forms.ModelForm):
+    email = forms.EmailField(max_length=255)
+    password = forms.CharField(max_length=255, widget=forms.PasswordInput)
+    confirm_password = forms.CharField(max_length=255, widget=forms.PasswordInput)
+
+    class Meta:
+        model = User
+        fields = ('username', 'email', 'password', 'confirm_password')
